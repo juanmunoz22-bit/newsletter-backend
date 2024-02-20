@@ -9,6 +9,7 @@ newsletter_bp = Blueprint("newsletter", __name__)
 def hello():
     return jsonify({"message": "Hello, World"})
 
+
 @newsletter_bp.route("/create", methods=["POST"])
 def create_campaign():
     data = request.json
@@ -22,3 +23,31 @@ def create_campaign():
     EmailService.create_recipients(recipients_emails)
     EmailService.add_recipient_to_campaign(campaign.id, recipients_emails)
     return jsonify({"message": "Campaign created successfully"})
+
+
+@newsletter_bp.route("/campaigns", methods=["GET"])
+def get_campaigns():
+    campaigns = EmailService.get_campaigns()
+    serialized_campaigns = [
+        {
+            "id": campaign.id,
+            "name": campaign.name,
+            "description": campaign.description,
+            "category": campaign.category,
+            "subject": campaign.subject,
+            "html_content": campaign.html_content,
+        }
+        for campaign in campaigns
+    ]
+    return jsonify({"data": serialized_campaigns})
+
+@newsletter_bp.route("/send/<campaign_id>", methods=["POST"])
+def send_campaign(campaign_id):
+    EmailService.send_campaign(campaign_id)
+    return jsonify({"message": "Campaign sent successfully"})
+
+
+@newsletter_bp.route("/unsubscribe/<email>", methods=["POST"])
+def unsubscribe(email):
+    updated_recipient = EmailService.unsubscribe(email)
+    return jsonify({"message": "Unsubscribed successfully", "data": updated_recipient.email})

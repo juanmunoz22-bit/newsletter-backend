@@ -38,6 +38,18 @@ services:
     volumes:
       - broker_app:/data
     
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - broker
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: celery -A app.extensions.celery.celery worker --loglevel=INFO
 
 volumes:
   db_app:
