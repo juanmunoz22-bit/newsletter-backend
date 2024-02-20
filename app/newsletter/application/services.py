@@ -2,15 +2,20 @@ from typing import List
 
 from app.newsletter.domain.models import Campaign, Recipient, CampaignRecipient
 from app.newsletter.infrastructure.postgres.repository import EmailRepository
-from app.newsletter.infrastructure.redis.celery import celery
+from app.newsletter.utils.celery import send_email
 
 class EmailService:
     @staticmethod
     def send_campaign(email_campaign_id):
         campaign = EmailRepository.get_campaign(email_campaign_id)
-        recipients: List[Recipient] = campaign.recipients
+        original_html_content = campaign.html_content
+        recipients: List[Recipient] = EmailRepository.get_campaign_recipients(email_campaign_id)
         for recipient in recipients:
-            send_email.delay(recipient.email, campaign.subject, campaign.html_content)
+            personalized_html_content = original_html_content.replace(
+                'UNSUBSCRIBE_LINK', 
+                f'http://localhost:5173/unsubscribe?user={recipient}'
+            )
+            send_email.delay(recipient, campaign.subject, personalized_html_content)
 
     @staticmethod
     def create_campaign(name, description, category, subject, html_content):
@@ -34,6 +39,12 @@ class EmailService:
         ]
         EmailRepository.save_campaign_recipients(campaign_recipients)
 
-@celery.task
-def send_email(recipient_email, subject, html_content) -> None:
-    pass
+    @staticmethod
+    def get_campaigns():
+        campaigns = EmailRepository.get_campaigns()
+        return campaigns
+    
+    @staticmethod
+    def unsubscribe(email):
+        recipient = EmailRepository.update_subscription(email)
+        return recipient
